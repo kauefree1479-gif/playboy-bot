@@ -26,7 +26,7 @@ const client = new Client({
 const TOKEN = process.env.TOKEN;
 
 // =====================
-// FILAS E PREÇOS
+// FILAS E PREÇOS SEPARADOS
 // =====================
 let filas = {
   "x1-mobile": [],
@@ -40,9 +40,17 @@ let filas = {
   "rmv": []
 };
 
-const listaPrecos = [0.30,0.50,0.70,1,2,3,5,10,20,30,50,70,100];
-let precos = {};
-for(let f in filas) precos[f] = [...listaPrecos];
+let precos = {
+  "x1-mobile": [0.30, 0.50, 0.70, 1],
+  "x2-mobile": [2, 3, 5],
+  "x3-mobile": [10, 20, 30],
+  "x4-mobile": [50, 70, 100],
+  "x1-emulador": [0.30, 0.50, 0.70, 1],
+  "x2-emulador": [2, 3, 5],
+  "x3-emulador": [10, 20, 30],
+  "x4-emulador": [50, 70, 100],
+  "rmv": [0.30, 0.50, 0.70, 1, 2, 3]
+};
 
 let canaisPrivados = {};
 let painelMsg = {};
@@ -70,18 +78,20 @@ client.on("messageCreate", async (message) => {
     for (let nome of cargos) if (!message.guild.roles.cache.find(r => r.name===nome)) 
       await message.guild.roles.create({ name: nome, reason: "Setup PLAY BOY" });
 
-    // FILAS E PAINÉIS
-    for (let fila in filas){
-      const categoria = await message.guild.channels.create({ name:`🎮 ${fila.toUpperCase()}`, type:ChannelType.GuildCategory });
-      const canal = await message.guild.channels.create({ name:`⚔️-${fila}`, type:ChannelType.GuildText, parent:categoria.id });
+    // MODOS E CATEGORIAS
+    const modos = ["x1-mobile","x2-mobile","x3-mobile","x4-mobile","x1-emulador","x2-emulador","x3-emulador","x4-emulador","rmv"];
+
+    for(let modo of modos){
+      const cat = await message.guild.channels.create({ name:`🎮 ${modo.toUpperCase()}`, type:ChannelType.GuildCategory });
+      const canal = await message.guild.channels.create({ name:`⚔️-${modo}`, type:ChannelType.GuildText, parent:cat.id });
 
       const painelRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`${fila}_entrar`).setLabel("Entrar").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId(`${fila}_sair`).setLabel("Sair").setStyle(ButtonStyle.Danger)
+        new ButtonBuilder().setCustomId(`${modo}_entrar`).setLabel("Entrar").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`${modo}_sair`).setLabel("Sair").setStyle(ButtonStyle.Danger)
       );
 
-      const painel = await canal.send({ content:`👑 FILA ${fila.toUpperCase()}\n💰 PREÇOS: ${precos[fila].join(", ")}\n👤 Jogadores: 0/2`, components:[painelRow]});
-      painelMsg[fila] = painel.id;
+      const painel = await canal.send({ content:`👑 FILA ${modo.toUpperCase()}\n💰 PREÇOS: ${precos[modo].join(", ")}\n👤 Jogadores: 0/2`, components:[painelRow]});
+      painelMsg[modo] = painel.id;
     }
 
     // TICKETS
@@ -117,7 +127,7 @@ client.on("messageCreate", async (message) => {
     const args = message.content.split(" ");
     const canal = args[1];
     const novoPreco = parseFloat(args[2]);
-    if(!precos[canal] || !listaPrecos.includes(novoPreco)) return message.reply("❌ Valor inválido para essa fila.");
+    if(!precos[canal] || !precos[canal].includes(novoPreco)) return message.reply("❌ Valor inválido para essa fila.");
     precos[canal] = [novoPreco];
     atualizarPainel(canal, message.guild);
     message.reply(`✅ Preço da fila ${canal} atualizado para ${novoPreco}`);
@@ -129,7 +139,7 @@ client.on("messageCreate", async (message) => {
     const canal = args[1]; 
     const senha = args[2];
     const valorBase = parseFloat(args[3]);
-    if(!precos[canal] || !listaPrecos.includes(valorBase)) return message.reply("❌ Valor inválido para essa fila.");
+    if(!precos[canal] || !precos[canal].includes(valorBase)) return message.reply("❌ Valor inválido para essa fila.");
 
     const valorFinal = (valorBase*2 + 0.05).toFixed(2);
     const c = message.guild.channels.cache.find(c=>c.name.includes(canal));

@@ -77,20 +77,32 @@ client.on("messageCreate", async message => {
 
     for(const [catName, modos] of Object.entries(categorias)){
       // Criar categoria
-      let cat = await message.guild.channels.create({name:`🎮 ${catName}`, type:ChannelType.GuildCategory});
+      let cat;
+      try{
+        cat = await message.guild.channels.create({name:`🎮 ${catName}`, type:ChannelType.GuildCategory});
+      }catch(e){
+        console.log(`❌ Erro ao criar categoria ${catName}:`, e);
+        continue;
+      }
 
       for(let modo of modos){
         // Criar canal de texto para fila
-        let canal = await message.guild.channels.create({
-          name:`⚔️-${modo}`, 
-          type:ChannelType.GuildText, 
-          parent:cat.id,
-          permissionOverwrites:[
-            {id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]}, // Todos negado
-            ...message.guild.roles.cache.filter(r => cargosRestritos.includes(r.name.toUpperCase()))
-              .map(r => ({id:r.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]}))
-          ]
-        });
+        let canal;
+        try{
+          canal = await message.guild.channels.create({
+            name:`⚔️-${modo}`, 
+            type:ChannelType.GuildText, 
+            parent:cat.id,
+            permissionOverwrites:[
+              {id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]}, // Todos negado
+              ...message.guild.roles.cache.filter(r => cargosRestritos.includes(r.name.toUpperCase()))
+                .map(r => ({id:r.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]}))
+            ]
+          });
+        }catch(e){
+          console.log(`❌ Erro ao criar canal ${modo}:`, e);
+          continue;
+        }
         
         // Painel com botões de preço
         const row = new ActionRowBuilder();
@@ -140,3 +152,111 @@ client.on("messageCreate", async message => {
     });
   }
 });
+
+// =====================
+// INTERAÇÃO DE BOTÕES
+// =====================
+client.on("interactionCreate", async interaction=>{
+  if(!interaction.isButton()) return;
+  const userId = interaction.user.id;
+
+  // BOTÕES DE PREÇO
+  if(interaction.customId.includes("_preco_")){
+    const [modo,, valorStr] = interaction.customId.split("_");
+    const valor = parseFloat(valorStr);
+    if(!filas[modo]) filas[modo]=[];
+    if(!filas[modo].includes(userId)) filas[modo].push(userId);
+
+    // Canal privado automático
+    const limite = modo.includes("x1") ? 2 : modo.includes("x2") ? 4 : modo.includes("x3") ? 6 : modo.includes("x4") ? 8 : 2;
+    if(filas[modo].length >= limite){
+      const guild = interaction.guild;
+      const permissoes = [{id:guild.id, deny:[PermissionsBitField.Flags.ViewChannel]}];
+      filas[modo].forEach(id=>permissoes.push({id, allow:[PermissionsBitField.Flags.ViewChannel]}));
+      guild.roles.cache.forEach(role=>{
+        if(cargosRestritos.includes(role.name.toUpperCase()))
+          permissoes.push({id:role.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]});
+      });
+
+      const valorTotal = (valor*2 + 0.05).toFixed(2);
+      const canalPriv = await guild.channels.create({
+        name:`⚔️-${modo}-R$${valorTotal}`, 
+        type:ChannelType.GuildText, 
+        permissionOverwrites:permissoes
+      });
+      canaisPrivados[modo] = canalPriv.id;
+      senhas[modo] = Math.floor(Math.random()*9000+1000); // senha aleatória 1000-9999
+
+      const embed = new EmbedBuilder()
+        .setTitle("⚔️ PARTIDA INICIADA")
+        .setDescription(
+          `Jogadores:\n${filas[modo].map(id=>`<@${id}>`).join("\n")}\n\n`+
+          `💰 Valor da partida: R$${valorTotal}\n`+
+          `🔒 Senha da sala: ${senhas[modo]}\n\n`+
+          `Clique no botão abaixo para aceitar a aposta.`
+        )
+        .setColor("#FFD700");
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("aceitar-aposta").setLabel("✅ Aceitar Aposta").setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId("fechar-canal").setLabel("🛑 FECHAR CANAL").setStyle(ButtonStyle.Danger)
+      );
+
+      await canalPriv.send({embeds:[embed], components:[row]});
+      filas[modo] = [];
+    }
+
+    await interaction.reply({content:`✅ Você escolheu R$${valor} na fila ${modo.toUpperCase()}`, ephemeral:true});
+  }
+
+  // FECHAR CANAL
+  if(interaction.customId==="fechar-canal"){
+    const memberRoles = interaction.member.roles.cache.map(r=>r.name.toUpperCase());
+    if(!memberRoles.some(r=>cargosRestritos.includes(r))) return interaction.reply({content:"❌ Apenas ADM pode fechar.", ephemeral:true});
+    await interaction.channel.delete().catch(()=>{});
+  }
+
+  // ACEITAR APOSTA
+  if(interaction.customId==="aceitar-aposta"){
+    const admRoles = cargosRestritos;
+    const adms = interaction.guild.members.cache.filter(m=>m.roles.cache.some(r=>admRoles.includes(r.name.toUpperCase())));
+
+    const canalPriv = interaction.channel;
+    const canalName = canalPriv.name.split("-")[1];
+    const valor = canalPriv.name.split("R$")[1] || "N/A";
+    const senha = senhas[canalName] || "N/A";
+
+    const embedAdm = new EmbedBuilder()
+      .setTitle("💰 Aposta Aceita")
+      .setDescription(
+        `👤 Jogador: <@${interaction.user.id}>\n`+
+        `🎮 Fila: ${canalName}\n`+
+        `💰 Valor da Aposta: R$${valor}\n`+
+        `🔒 Senha: ${senha}\n`+
+        `📅 Hora: ${new Date().toLocaleString()}`
+      )
+      .setColor("#FFD700");
+
+    adms.forEach(adm=>adm.send({embeds:[embedAdm]}).catch(()=>{}));
+    interaction.reply({content:"✅ Você aceitou a aposta! ADM notificado.", ephemeral:true});
+  }
+
+  // ABRIR TICKET
+  if(interaction.customId==="abrir-ticket"){
+    const ticketCat = interaction.guild.channels.cache.find(c=>c.name==="🎫 SUPORTE" && c.type===4);
+    const ticketChannel = await interaction.guild.channels.create({
+      name:`🎫-ticket-${interaction.user.username}`,
+      type:0,
+      parent:ticketCat.id,
+      permissionOverwrites:[
+        {id:interaction.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]},
+        {id:interaction.user.id, allow:[PermissionsBitField.Flags.ViewChannel]},
+        {id:interaction.guild.roles.cache.find(r=>r.name==="SUPORTE")?.id, allow:[PermissionsBitField.Flags.ViewChannel]}
+      ]
+    });
+    ticketChannel.send(`Olá <@${interaction.user.id}>, aguarde que a equipe de suporte atenderá você.`);
+    return interaction.reply({content:`✅ Ticket criado: <#${ticketChannel.id}>`, ephemeral:true});
+  }
+});
+
+client.login(TOKEN);

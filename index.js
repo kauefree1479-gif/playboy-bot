@@ -143,7 +143,7 @@ client.on("interactionCreate", async (interaction)=>{
     atualizarPainel(canal, interaction.guild);
 
     // Checar limite
-    const limite = 2;
+    const limite = 2; // Ajuste se quiser para X2, X3, X4
     if(filas[canal].length>=limite){
       const guild = interaction.guild;
       const permissoes = [{id:guild.id, deny:[PermissionsBitField.Flags.ViewChannel]}];

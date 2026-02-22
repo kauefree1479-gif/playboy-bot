@@ -52,18 +52,24 @@ client.on("messageCreate", async (message) => {
   if (!message.guild) return;
 
   if (message.content === "!setup") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return message.reply("❌ Você precisa ser administrador.");
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) 
+      return message.reply("❌ Você precisa ser administrador.");
 
     message.reply("⚙️ Criando estrutura da PLAY BOY E-SPORTS...");
 
     // CARGOS
     const cargos = ["DONO","🎖️ CEO","💼 DIRETOR","🛡️ GERENTE GERAL","📋 ADMIN GERAL","🧩 COORDENADOR","🔥 HEAD COMPETITIVO","📊 ANALISTA","📢 INFLUENCER","🎫 SUPORTE","👤 MEMBRO COMPETITIVO","🏆 MVP","🥇 TOP 1 RANK","⭐ DESTAQUE","👤 MEMBRO","🎟️ CLIENTE","👀 VISITANTE"];
-    for (let nome of cargos) if (!message.guild.roles.cache.find(r => r.name===nome)) await message.guild.roles.create({ name: nome, reason: "Setup PLAY BOY" });
+    for (let nome of cargos) if (!message.guild.roles.cache.find(r => r.name===nome)) 
+      await message.guild.roles.create({ name: nome, reason: "Setup PLAY BOY" });
 
     // CATEGORIAS E CANAIS
     const info = await message.guild.channels.create({ name: "📜 INFORMAÇÕES", type: 4 });
     await message.guild.channels.create({ name: "📜・regras", type: 0, parent: info.id });
     await message.guild.channels.create({ name: "📢・avisos", type: 0, parent: info.id });
+
+    const analise = await message.guild.channels.create({ name: "📊 ANÁLISE", type: 4 });
+    await message.guild.channels.create({ name: "📊-partidas", type: 0, parent: analise.id });
+    await message.guild.channels.create({ name: "📊-jogadores", type: 0, parent: analise.id });
 
     const mobile = await message.guild.channels.create({ name: "🎮 FILAS MOBILE", type: 4 });
     const modosMobile = ["⚔️・x1-mobile","👥・x2-mobile","🔥・x3-mobile","⚡・x4-mobile","👊・full-soco-mobile"];
@@ -74,14 +80,19 @@ client.on("messageCreate", async (message) => {
     for (let canal of modosEmu) await message.guild.channels.create({ name: canal, type: 0, parent: emu.id });
 
     const adminRole = message.guild.roles.cache.find(r => r.name==="📋 ADMIN GERAL");
-    const categoriaAdmin = await message.guild.channels.create({ name:"👑 ADMINISTRAÇÃO", type:4, permissionOverwrites:[{id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]},{id:adminRole.id, allow:[PermissionsBitField.Flags.ViewChannel]}] });
+    const categoriaAdmin = await message.guild.channels.create({ name:"👑 ADMINISTRAÇÃO", type:4, permissionOverwrites:[
+      {id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]},
+      {id:adminRole.id, allow:[PermissionsBitField.Flags.ViewChannel]}
+    ]});
     await message.guild.channels.create({ name:"🔒・painel-admin", type:0, parent:categoriaAdmin.id });
 
     // TICKET
     const ticketCat = await message.guild.channels.create({ name:"🎫 SUPORTE", type:4 });
     const suporteRole = message.guild.roles.cache.find(r => r.name==="🎫 SUPORTE");
     const ticketChannel = await message.guild.channels.create({ name:"🎫-tickets", type:0, parent:ticketCat.id });
-    const ticketRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("abrir-ticket").setLabel("🎫 Abrir Ticket").setStyle(ButtonStyle.Primary));
+    const ticketRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("abrir-ticket").setLabel("🎫 Abrir Ticket").setStyle(ButtonStyle.Primary)
+    );
     ticketChannel.send({ content:"Clique no botão para abrir um ticket de suporte:", components:[ticketRow] });
 
     message.channel.send("✅ PLAY BOY E-SPORTS criada com sucesso 👑🔥");
@@ -90,7 +101,12 @@ client.on("messageCreate", async (message) => {
   // PAINEL AO VIVO
   if (message.content==="!painel") {
     const painelRow = new ActionRowBuilder().addComponents(
-      ...Object.keys(filas).map(modo=>new ButtonBuilder().setCustomId(modo).setLabel(`${modo.toUpperCase()} | 0 jogadores`).setStyle(ButtonStyle.Primary)),
+      ...Object.keys(filas).map(modo=>
+        new ButtonBuilder()
+          .setCustomId(modo)
+          .setLabel(`${modo.toUpperCase()} | 0 jogadores`)
+          .setStyle(ButtonStyle.Primary)
+      ),
       new ButtonBuilder().setCustomId("sair").setLabel("🚪 SAIR").setStyle(ButtonStyle.Danger)
     );
 
@@ -147,12 +163,17 @@ client.on("interactionCreate", async (interaction)=>{
     const guild = interaction.guild;
     const permissoes = [{id:guild.id, deny:[PermissionsBitField.Flags.ViewChannel]}];
     filas[modo].forEach(id=>permissoes.push({id, allow:[PermissionsBitField.Flags.ViewChannel]}));
-    guild.roles.cache.forEach(role=>{ if(["DONO","DIRETOR","GERENTE GERAL","ADMIN GERAL"].includes(role.name.toUpperCase())) permissoes.push({id:role.id, allow:[PermissionsBitField.Flags.ViewChannel]}) });
+    guild.roles.cache.forEach(role=>{ 
+      if(["DONO","DIRETOR","GERENTE GERAL","ADMIN GERAL"].includes(role.name.toUpperCase())) 
+        permissoes.push({id:role.id, allow:[PermissionsBitField.Flags.ViewChannel]}) 
+    });
     const canal = await guild.channels.create({ name:`⚔️-${modo}-${Date.now()}`, type:0, permissionOverwrites:permissoes });
     canaisPrivados[modo]=canal.id;
 
     const embed = new EmbedBuilder().setTitle("⚔️ PARTIDA INICIADA").setDescription(`Jogadores:\n${filas[modo].map(id=>`<@${id}>`).join("\n")}\n\nADM pode fechar clicando no botão abaixo.`).setColor("#D4AF37");
-    const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("fechar-canal").setLabel("🛑 FECHAR CANAL").setStyle(ButtonStyle.Danger));
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("fechar-canal").setLabel("🛑 FECHAR CANAL").setStyle(ButtonStyle.Danger)
+    );
     canal.send({ embeds:[embed], components:[row] });
     filas[modo]=[];
   }
@@ -165,7 +186,6 @@ async function atualizarPainel(){
   if(!painelMsg) return;
   const row = new ActionRowBuilder().addComponents(
     ...Object.keys(filas).map(modo=>{
-      const jogadores = filas[modo].map(id=>`<@${id}>`).join(", ") || "Nenhum";
       return new ButtonBuilder().setCustomId(modo).setLabel(`${modo.toUpperCase()} | ${filas[modo].length} jogadores`).setStyle(ButtonStyle.Primary);
     }),
     new ButtonBuilder().setCustomId("sair").setLabel("🚪 SAIR").setStyle(ButtonStyle.Danger)

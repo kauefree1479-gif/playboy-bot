@@ -95,24 +95,29 @@ client.on("messageCreate", async message => {
           });
         }catch(e){ continue; }
         
-        // BOTÕES DE PREÇOS
-        const row = new ActionRowBuilder();
-        precos.forEach(valor=>{
-          row.addComponents(
+        // ======= BOTÕES DE PREÇOS (MÁX 5 POR LINHA) =======
+        let rows = [];
+        let tempRow = new ActionRowBuilder();
+        precos.forEach((valor, index) => {
+          tempRow.addComponents(
             new ButtonBuilder()
               .setCustomId(`${modo}_preco_${valor}`)
               .setLabel(`R$${valor}`)
               .setStyle(ButtonStyle.Primary)
           );
+          if ((index + 1) % 5 === 0) {
+            rows.push(tempRow);
+            tempRow = new ActionRowBuilder();
+          }
         });
+        if (tempRow.components.length > 0) rows.push(tempRow);
 
-        try{
-          let painel = await canal.send({
-            content:`👑 FILA ${modo.toUpperCase()}\nEscolha seu preço:`,
-            components:[row]
-          });
-          painelMsg[modo] = painel.id;
-        }catch(e){ console.log(`❌ Falha painel ${modo}:`, e); }
+        // Envia painel
+        let painel = await canal.send({
+          content: `👑 FILA ${modo.toUpperCase()}\nEscolha seu preço:`,
+          components: rows
+        });
+        painelMsg[modo] = painel.id;
       }
     }
 

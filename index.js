@@ -94,44 +94,38 @@ client.on("messageCreate", async message => {
             ]
           });
         }catch(e){ continue; }
-        
-        // ======= BOTÕES DE PREÇOS (MÁX 5 POR LINHA) =======
-        let rows = [];
-        let tempRow = new ActionRowBuilder();
-        precos.forEach((valor, index) => {
-          tempRow.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`${modo}_preco_${valor}`)
-              .setLabel(`R$${valor}`)
-              .setStyle(ButtonStyle.Primary)
-          );
-          if ((index + 1) % 5 === 0) {
-            rows.push(tempRow);
-            tempRow = new ActionRowBuilder();
-          }
-        });
-        if (tempRow.components.length > 0) rows.push(tempRow);
 
-        // Envia painel de preços
+        // ======= BOTÕES DE PREÇO + AÇÃO =======
+        let rows = [];
+        precos.forEach(valor => {
+          const priceRow = new ActionRowBuilder()
+            .addComponents(
+              new ButtonBuilder()
+                .setCustomId(`${modo}_preco_${valor}_fullump`)
+                .setLabel(`R$${valor} Full UMP`)
+                .setStyle(ButtonStyle.Primary),
+              new ButtonBuilder()
+                .setCustomId(`${modo}_preco_${valor}_xm8`)
+                .setLabel(`R$${valor} XM8`)
+                .setStyle(ButtonStyle.Primary),
+              new ButtonBuilder()
+                .setCustomId(`${modo}_preco_${valor}_normal`)
+                .setLabel(`R$${valor} Normal`)
+                .setStyle(ButtonStyle.Primary),
+              new ButtonBuilder()
+                .setCustomId(`${modo}_preco_${valor}_sair`)
+                .setLabel(`R$${valor} Sair`)
+                .setStyle(ButtonStyle.Danger)
+            );
+          rows.push(priceRow);
+        });
+
+        // Envia painel de preços e ações
         let painel = await canal.send({
-          content: `👑 FILA ${modo.toUpperCase()}\nEscolha seu preço:`,
+          content: `👑 FILA ${modo.toUpperCase()}\nEscolha seu preço e ação:`,
           components: rows
         });
         painelMsg[modo] = painel.id;
-
-        // ======= BOTÕES DE AÇÃO: Full UMP, XM8, Normal, Sair =======
-        const actionRow = new ActionRowBuilder()
-          .addComponents(
-            new ButtonBuilder().setCustomId(`${modo}_fullump`).setLabel("Full UMP").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId(`${modo}_xm8`).setLabel("XM8").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId(`${modo}_normal`).setLabel("Normal").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId(`${modo}_sair`).setLabel("Sair da Fila").setStyle(ButtonStyle.Danger)
-          );
-
-        await canal.send({
-          content: `🎯 Ações da fila ${modo.toUpperCase()}:`,
-          components: [actionRow]
-        });
       }
     }
 
@@ -170,77 +164,20 @@ client.on("interactionCreate", async interaction=>{
   if(!interaction.isButton()) return;
   const userId = interaction.user.id;
 
-  // ===================== BOTÕES DE PREÇO =====================
+  // ===================== BOTÕES DE PREÇO + AÇÃO =====================
   if(interaction.customId.includes("_preco_")){
-    const [modo,, valorStr] = interaction.customId.split("_");
+    const [modo,, valorStr, acao] = interaction.customId.split("_");
     const valor = parseFloat(valorStr);
-    if(!filas[modo]) filas[modo]=[];
-    if(!filas[modo].includes(userId)) filas[modo].push(userId);
+    filas[modo] = filas[modo] || [];
 
-    const limite = modo.includes("x1") ? 2 : modo.includes("x2") ? 4 : modo.includes("x3") ? 6 : modo.includes("x4") ? 8 : 2;
-    if(filas[modo].length >= limite){
-      const guild = interaction.guild;
-      const permissoes = [{id:guild.id, deny:[PermissionsBitField.Flags.ViewChannel]}];
-      filas[modo].forEach(id=>permissoes.push({id, allow:[PermissionsBitField.Flags.ViewChannel]}));
-      guild.roles.cache.forEach(role=>{
-        if(cargosRestritos.includes(role.name.toUpperCase()))
-          permissoes.push({id:role.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]});
-      });
-
-      const valorTotal = (valor*2 + 0.05).toFixed(2);
-      const canalPriv = await guild.channels.create({
-        name:`⚔️-${modo}-R$${valorTotal}`, 
-        type:ChannelType.GuildText, 
-        permissionOverwrites:permissoes
-      });
-      canaisPrivados[modo] = canalPriv.id;
-      senhas[modo] = Math.floor(Math.random()*9000+1000);
-
-      const embed = new EmbedBuilder()
-        .setTitle("⚔️ PARTIDA INICIADA")
-        .setDescription(
-          `Jogadores:\n${filas[modo].map(id=>`<@${id}>`).join("\n")}\n\n`+
-          `💰 Valor da partida: R$${valorTotal}\n`+
-          `🔒 Senha da sala: ${senhas[modo]}\n\nClique no botão abaixo para aceitar a aposta.`
-        )
-        .setColor("#FFD700");
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("aceitar-aposta").setLabel("✅ Aceitar Aposta").setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId("fechar-canal").setLabel("🛑 FECHAR CANAL").setStyle(ButtonStyle.Danger)
-      );
-
-      await canalPriv.send({embeds:[embed], components:[row]});
-      filas[modo] = [];
-    }
-
-    await interaction.reply({content:`✅ Você escolheu R$${valor} na fila ${modo.toUpperCase()}`, ephemeral:true});
-  }
-
-  // ===================== BOTÕES DE AÇÃO =====================
-  const modosKeys = Object.keys(filas);
-  modosKeys.forEach(modo=>{
-    if(interaction.customId === `${modo}_fullump`){
-      filas[modo] = filas[modo] || [];
-      if(!filas[modo].includes(userId)) filas[modo].push(userId);
-      return interaction.reply({content:"✅ Você escolheu Full UMP!", ephemeral:true});
-    }
-    if(interaction.customId === `${modo}_xm8`){
-      filas[modo] = filas[modo] || [];
-      if(!filas[modo].includes(userId)) filas[modo].push(userId);
-      return interaction.reply({content:"✅ Você escolheu XM8!", ephemeral:true});
-    }
-    if(interaction.customId === `${modo}_normal`){
-      filas[modo] = filas[modo] || [];
-      if(!filas[modo].includes(userId)) filas[modo].push(userId);
-      return interaction.reply({content:"✅ Você escolheu Normal!", ephemeral:true});
-    }
-    if(interaction.customId === `${modo}_sair`){
-      filas[modo] = filas[modo] || [];
+    if(acao === "sair"){
       filas[modo] = filas[modo].filter(id => id !== userId);
-      return interaction.reply({content:"❌ Você saiu da fila!", ephemeral:true});
+      return interaction.reply({content:`❌ Você saiu da fila R$${valor}`, ephemeral:true});
     }
-  });
+
+    if(!filas[modo].includes(userId)) filas[modo].push(userId);
+    return interaction.reply({content:`✅ Você escolheu R$${valor} com ação ${acao.toUpperCase()}`, ephemeral:true});
+  }
 
   // ===================== FECHAR CANAL =====================
   if(interaction.customId==="fechar-canal"){

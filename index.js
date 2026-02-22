@@ -82,7 +82,6 @@ client.on("messageCreate", async message => {
       for(let modo of modos){
         let canal;
         try{
-          // Canais de fila abertos para todos
           canal = await message.guild.channels.create({
             name:`⚔️-${modo}`, 
             type:ChannelType.GuildText, 
@@ -120,7 +119,6 @@ client.on("messageCreate", async message => {
           rows.push(priceRow);
         });
 
-        // Envia painel de preços e ações
         let painel = await canal.send({
           content: `👑 FILA ${modo.toUpperCase()}\nEscolha seu preço e ação:`,
           components: rows

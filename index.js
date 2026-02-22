@@ -6,8 +6,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType,
-  MessageAttachment
+  ChannelType
 } = require('discord.js');
 const QRCode = require('qrcode');
 
@@ -89,7 +88,7 @@ client.on("messageCreate", async message => {
             type:ChannelType.GuildText, 
             parent:cat.id,
             permissionOverwrites:[
-              {id:message.guild.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]},
+              {id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]},
               ...message.guild.roles.cache.filter(r => cargosRestritos.includes(r.name.toUpperCase()))
                 .map(r => ({id:r.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]}))
             ]

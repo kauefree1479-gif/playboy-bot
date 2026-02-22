@@ -40,7 +40,7 @@ let filas = {
 };
 
 let canaisPrivados = {};
-let painelMsg = null; // mensagem do painel de filas
+let painelMsg = null;
 
 client.once("ready", () => {
   console.log("👑 PLAY BOY E-SPORTS ONLINE");
@@ -98,6 +98,18 @@ client.on("messageCreate", async (message) => {
     ticketChannel.send({ content:"Clique no botão para abrir um ticket de suporte:", components:[ticketRow] });
 
     message.channel.send("✅ PLAY BOY E-SPORTS criada com sucesso 👑🔥");
+  }
+
+  // EXCLUIR TODOS OS CANAIS
+  if (message.content === "!reset") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) 
+      return message.reply("❌ Apenas ADM pode resetar o servidor.");
+
+    message.reply("🗑️ Excluindo todos os canais criados pelo bot...");
+    message.guild.channels.cache.forEach(c => {
+      if(c.deletable) c.delete().catch(()=>{});
+    });
+    message.channel.send("✅ Todos os canais foram excluídos!");
   }
 
   // PAINEL AO VIVO

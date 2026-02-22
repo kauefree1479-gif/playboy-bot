@@ -5,7 +5,8 @@ const {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  ChannelType
 } = require('discord.js');
 
 const express = require("express");
@@ -63,33 +64,34 @@ client.on("messageCreate", async (message) => {
       await message.guild.roles.create({ name: nome, reason: "Setup PLAY BOY" });
 
     // CATEGORIAS E CANAIS
-    const info = await message.guild.channels.create({ name: "📜 INFORMAÇÕES", type: 4 });
-    await message.guild.channels.create({ name: "📜・regras", type: 0, parent: info.id });
-    await message.guild.channels.create({ name: "📢・avisos", type: 0, parent: info.id });
+    const info = await message.guild.channels.create({ name: "📜 INFORMAÇÕES", type: ChannelType.GuildCategory });
+    await message.guild.channels.create({ name: "📜・regras", type: ChannelType.GuildText, parent: info.id });
+    await message.guild.channels.create({ name: "📢・avisos", type: ChannelType.GuildText, parent: info.id });
 
-    const analise = await message.guild.channels.create({ name: "📊 ANÁLISE", type: 4 });
-    await message.guild.channels.create({ name: "📊-partidas", type: 0, parent: analise.id });
-    await message.guild.channels.create({ name: "📊-jogadores", type: 0, parent: analise.id });
+    // ABA DE ANÁLISE (canais de voz)
+    const analise = await message.guild.channels.create({ name: "📊 ANÁLISE", type: ChannelType.GuildCategory });
+    await message.guild.channels.create({ name: "📊-partidas", type: ChannelType.GuildVoice, parent: analise.id });
+    await message.guild.channels.create({ name: "📊-jogadores", type: ChannelType.GuildVoice, parent: analise.id });
 
-    const mobile = await message.guild.channels.create({ name: "🎮 FILAS MOBILE", type: 4 });
+    const mobile = await message.guild.channels.create({ name: "🎮 FILAS MOBILE", type: ChannelType.GuildCategory });
     const modosMobile = ["⚔️・x1-mobile","👥・x2-mobile","🔥・x3-mobile","⚡・x4-mobile","👊・full-soco-mobile"];
-    for (let canal of modosMobile) await message.guild.channels.create({ name: canal, type: 0, parent: mobile.id });
+    for (let canal of modosMobile) await message.guild.channels.create({ name: canal, type: ChannelType.GuildText, parent: mobile.id });
 
-    const emu = await message.guild.channels.create({ name: "🖥️ FILAS EMULADOR", type: 4 });
+    const emu = await message.guild.channels.create({ name: "🖥️ FILAS EMULADOR", type: ChannelType.GuildCategory });
     const modosEmu = ["⚔️・x1-emulador","👥・x2-emulador","🔥・x3-emulador","⚡・x4-emulador","👊・full-soco-emulador"];
-    for (let canal of modosEmu) await message.guild.channels.create({ name: canal, type: 0, parent: emu.id });
+    for (let canal of modosEmu) await message.guild.channels.create({ name: canal, type: ChannelType.GuildText, parent: emu.id });
 
     const adminRole = message.guild.roles.cache.find(r => r.name==="📋 ADMIN GERAL");
-    const categoriaAdmin = await message.guild.channels.create({ name:"👑 ADMINISTRAÇÃO", type:4, permissionOverwrites:[
+    const categoriaAdmin = await message.guild.channels.create({ name:"👑 ADMINISTRAÇÃO", type:ChannelType.GuildCategory, permissionOverwrites:[
       {id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]},
       {id:adminRole.id, allow:[PermissionsBitField.Flags.ViewChannel]}
     ]});
-    await message.guild.channels.create({ name:"🔒・painel-admin", type:0, parent:categoriaAdmin.id });
+    await message.guild.channels.create({ name:"🔒・painel-admin", type:ChannelType.GuildText, parent:categoriaAdmin.id });
 
     // TICKET
-    const ticketCat = await message.guild.channels.create({ name:"🎫 SUPORTE", type:4 });
+    const ticketCat = await message.guild.channels.create({ name:"🎫 SUPORTE", type:ChannelType.GuildCategory });
     const suporteRole = message.guild.roles.cache.find(r => r.name==="🎫 SUPORTE");
-    const ticketChannel = await message.guild.channels.create({ name:"🎫-tickets", type:0, parent:ticketCat.id });
+    const ticketChannel = await message.guild.channels.create({ name:"🎫-tickets", type:ChannelType.GuildText, parent:ticketCat.id });
     const ticketRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("abrir-ticket").setLabel("🎫 Abrir Ticket").setStyle(ButtonStyle.Primary)
     );

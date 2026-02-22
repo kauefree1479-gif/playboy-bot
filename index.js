@@ -68,10 +68,12 @@ client.on("messageCreate", async (message) => {
     await message.guild.channels.create({ name: "📜・regras", type: ChannelType.GuildText, parent: info.id });
     await message.guild.channels.create({ name: "📢・avisos", type: ChannelType.GuildText, parent: info.id });
 
-    // ABA DE ANÁLISE (canais de voz)
+    // ABA DE ANÁLISE (MULTI CALLS)
     const analise = await message.guild.channels.create({ name: "📊 ANÁLISE", type: ChannelType.GuildCategory });
-    await message.guild.channels.create({ name: "📊-partidas", type: ChannelType.GuildVoice, parent: analise.id });
-    await message.guild.channels.create({ name: "📊-jogadores", type: ChannelType.GuildVoice, parent: analise.id });
+    for(let i=1;i<=5;i++){
+      await message.guild.channels.create({ name:`📊-partidas-${i}`, type: ChannelType.GuildVoice, parent: analise.id });
+      await message.guild.channels.create({ name:`📊-jogadores-${i}`, type: ChannelType.GuildVoice, parent: analise.id });
+    }
 
     const mobile = await message.guild.channels.create({ name: "🎮 FILAS MOBILE", type: ChannelType.GuildCategory });
     const modosMobile = ["⚔️・x1-mobile","👥・x2-mobile","🔥・x3-mobile","⚡・x4-mobile","👊・full-soco-mobile"];
@@ -112,20 +114,37 @@ client.on("messageCreate", async (message) => {
     message.channel.send("✅ Todos os canais foram excluídos!");
   }
 
+  // =====================
   // PAINEL AO VIVO
+  // =====================
   if (message.content==="!painel") {
-    const painelRow = new ActionRowBuilder().addComponents(
-      ...Object.keys(filas).map(modo=>
-        new ButtonBuilder()
-          .setCustomId(modo)
-          .setLabel(`${modo.toUpperCase()} | 0 jogadores`)
-          .setStyle(ButtonStyle.Primary)
-      ),
-      new ButtonBuilder().setCustomId("sair").setLabel("🚪 SAIR").setStyle(ButtonStyle.Danger)
-    );
+    const filasNomes = Object.keys(filas);
+    const rows = [];
 
-    const msg = await message.channel.send({ content:"👑 PLAY BOY E-SPORTS - Painel de filas ao vivo:", components:[painelRow] });
-    painelMsg = msg;
+    for (let i = 0; i < filasNomes.length; i += 5) {
+      const slice = filasNomes.slice(i, i + 5);
+      const row = new ActionRowBuilder();
+      slice.forEach(fila => {
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId(fila)
+            .setLabel(`${fila.toUpperCase()} | ${filas[fila].length} jogadores`)
+            .setStyle(ButtonStyle.Primary)
+        );
+      });
+      rows.push(row);
+    }
+
+    // Botão de sair
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("sair")
+        .setLabel("🚪 SAIR")
+        .setStyle(ButtonStyle.Danger)
+    ));
+
+    message.channel.send({ content: "👑 PLAY BOY E-SPORTS - Painel de filas ao vivo:", components: rows })
+      .then(msg => painelMsg = msg);
   }
 });
 
@@ -198,13 +217,32 @@ client.on("interactionCreate", async (interaction)=>{
 // =====================
 async function atualizarPainel(){
   if(!painelMsg) return;
-  const row = new ActionRowBuilder().addComponents(
-    ...Object.keys(filas).map(modo=>{
-      return new ButtonBuilder().setCustomId(modo).setLabel(`${modo.toUpperCase()} | ${filas[modo].length} jogadores`).setStyle(ButtonStyle.Primary);
-    }),
-    new ButtonBuilder().setCustomId("sair").setLabel("🚪 SAIR").setStyle(ButtonStyle.Danger)
-  );
-  await painelMsg.edit({ components:[row] });
+  const filasNomes = Object.keys(filas);
+  const rows = [];
+
+  for (let i = 0; i < filasNomes.length; i += 5) {
+    const slice = filasNomes.slice(i, i + 5);
+    const row = new ActionRowBuilder();
+    slice.forEach(fila => {
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(fila)
+          .setLabel(`${fila.toUpperCase()} | ${filas[fila].length} jogadores`)
+          .setStyle(ButtonStyle.Primary)
+      );
+    });
+    rows.push(row);
+  }
+
+  // Botão de sair
+  rows.push(new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("sair")
+      .setLabel("🚪 SAIR")
+      .setStyle(ButtonStyle.Danger)
+  ));
+
+  await painelMsg.edit({ components: rows });
 }
 
 client.login(TOKEN);

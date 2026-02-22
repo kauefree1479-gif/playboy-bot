@@ -67,7 +67,7 @@ client.on("messageCreate", async message => {
       if(!message.guild.roles.cache.find(r => r.name===nome))
         await message.guild.roles.create({name:nome, reason:"Setup PLAY BOY"});
 
-    // ======= CATEGORIAS =======
+    // ======= CATEGORIAS E FILAS ABERTAS =======
     const categorias = {
       "MOBILE":["x1-mobile","x2-mobile","x3-mobile","x4-mobile"],
       "EMULADOR":["x1-emulador","x2-emulador","x3-emulador","x4-emulador"]
@@ -82,19 +82,20 @@ client.on("messageCreate", async message => {
       for(let modo of modos){
         let canal;
         try{
+          // Canais de fila abertos para todos
           canal = await message.guild.channels.create({
             name:`⚔️-${modo}`, 
             type:ChannelType.GuildText, 
             parent:cat.id,
             permissionOverwrites:[
-              {id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]},
+              {id:message.guild.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]},
               ...message.guild.roles.cache.filter(r => cargosRestritos.includes(r.name.toUpperCase()))
                 .map(r => ({id:r.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]}))
             ]
           });
         }catch(e){ continue; }
         
-        // ======= BOTÕES DE PREÇOS =======
+        // BOTÕES DE PREÇOS
         const row = new ActionRowBuilder();
         precos.forEach(valor=>{
           row.addComponents(

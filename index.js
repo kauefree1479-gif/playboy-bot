@@ -64,9 +64,10 @@ client.on("messageCreate", async message => {
 
     // ======= CARGOS =======
     const cargos = ["DONO","🎖️ CEO","💼 DIRETOR","🛡️ GERENTE GERAL","📋 ADMIN GERAL","🧩 COORDENADOR","🔥 HEAD COMPETITIVO","📊 ANALISTA","📢 INFLUENCER","🎫 SUPORTE","👤 MEMBRO COMPETITIVO","🏆 MVP","🥇 TOP 1 RANK","⭐ DESTAQUE","👤 MEMBRO","🎟️ CLIENTE","👀 VISITANTE","STAFF"];
-    for(let nome of cargos) 
+    for(let nome of cargos) {
       if(!message.guild.roles.cache.find(r => r.name===nome))
         await message.guild.roles.create({name:nome, reason:"Setup PLAY BOY"});
+    }
 
     // ======= CATEGORIAS E FILAS =======
     const categorias = {
@@ -75,25 +76,22 @@ client.on("messageCreate", async message => {
     };
 
     for(const [catName, modos] of Object.entries(categorias)){
-      let cat;
-      try{
-        cat = await message.guild.channels.create({name:`🎮 ${catName}`, type:ChannelType.GuildCategory});
-      }catch(e){ continue; }
+      const cat = await message.guild.channels.create({
+        name:`🎮 ${catName}`,
+        type:ChannelType.GuildCategory
+      });
 
       for(let modo of modos){
-        let canal;
-        try{
-          canal = await message.guild.channels.create({
-            name:`⚔️-${modo}`, 
-            type:ChannelType.GuildText, 
-            parent:cat.id,
-            permissionOverwrites:[
-              {id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]},
-              ...message.guild.roles.cache.filter(r => cargosRestritos.includes(r.name.toUpperCase()))
-                .map(r => ({id:r.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]}))
-            ]
-          });
-        }catch(e){ continue; }
+        const canal = await message.guild.channels.create({
+          name:`⚔️-${modo}`,
+          type:ChannelType.GuildText,
+          parent:cat.id,
+          permissionOverwrites:[
+            {id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]}, // Ninguém vê por padrão
+            ...message.guild.roles.cache.filter(r => cargosRestritos.includes(r.name.toUpperCase()))
+              .map(r => ({id:r.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]}))
+          ]
+        });
 
         // ======= BOTÕES DE PREÇO + AÇÃO =======
         let rows = [];
@@ -120,8 +118,8 @@ client.on("messageCreate", async message => {
           rows.push(priceRow);
         });
 
-        let painel = await canal.send({
-          content: `👑 FILA ${modo.toUpperCase()}\nEscolha seu preço e ação:`,
+        const painel = await canal.send({
+          content:`👑 FILA ${modo.toUpperCase()}\nEscolha seu preço e ação:`,
           components: rows
         });
         painelMsg[modo] = painel.id;
@@ -129,23 +127,23 @@ client.on("messageCreate", async message => {
     }
 
     // ======= B.O ANÁLISE =======
-    let analiseCat = await message.guild.channels.create({name:"📊 B.O ANÁLISE", type:ChannelType.GuildCategory});
+    const analiseCat = await message.guild.channels.create({name:"📊 B.O ANÁLISE", type:ChannelType.GuildCategory});
     for(let i=0;i<=10;i++){
       await message.guild.channels.create({name:`📊-análise-${i}`, type:ChannelType.GuildVoice, parent:analiseCat.id});
     }
 
     // ======= TICKETS =======
-    let ticketCat = await message.guild.channels.create({name:"🎫 SUPORTE", type:ChannelType.GuildCategory});
-    let ticketChannel = await message.guild.channels.create({name:"🎫-tickets", type:ChannelType.GuildText, parent:ticketCat.id});
+    const ticketCat = await message.guild.channels.create({name:"🎫 SUPORTE", type:ChannelType.GuildCategory});
+    const ticketChannel = await message.guild.channels.create({name:"🎫-tickets", type:ChannelType.GuildText, parent:ticketCat.id});
     const ticketRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("abrir-ticket").setLabel("🎫 Abrir Ticket").setStyle(ButtonStyle.Primary)
     );
-    ticketChannel.send({content:"Clique no botão para abrir um ticket de suporte:", components:[ticketRow]});
+    await ticketChannel.send({content:"Clique no botão para abrir um ticket de suporte:", components:[ticketRow]});
 
     // ======= CANAL PARA CADASTRAR PIX =======
-    let pixCat = await message.guild.channels.create({name:"💳 CADASTRO PIX", type:ChannelType.GuildCategory});
-    let pixChannel = await message.guild.channels.create({name:"💳-pix-adm", type:ChannelType.GuildText, parent:pixCat.id});
-    pixChannel.send("ADM, use `!pix <chave_pix>` para cadastrar seu Pix e gerar QR Code.");
+    const pixCat = await message.guild.channels.create({name:"💳 CADASTRO PIX", type:ChannelType.GuildCategory});
+    const pixChannel = await message.guild.channels.create({name:"💳-pix-adm", type:ChannelType.GuildText, parent:pixCat.id});
+    await pixChannel.send("ADM, use `!pix <chave_pix>` para cadastrar seu Pix e gerar QR Code.");
 
     message.channel.send("✅ Estrutura completa criada com sucesso!");
   }
@@ -192,7 +190,7 @@ client.on("interactionCreate", async interaction=>{
 
     if(!filas[modo].includes(userId)) filas[modo].push(userId);
 
-    // Quando a fila atingir o limite (exemplo x1=2, x2=4, x3=6, x4=8)
+    // Quando a fila atingir o limite (x1=2, x2=4, x3=6, x4=8)
     const limite = modo.includes("x1") ? 2 : modo.includes("x2") ? 4 : modo.includes("x3") ? 6 : modo.includes("x4") ? 8 : 2;
     if(filas[modo].length >= limite){
       const guild = interaction.guild;

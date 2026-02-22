@@ -25,12 +25,32 @@ const client = new Client({
 
 const TOKEN = process.env.TOKEN;
 
-// FILAS
+// =====================
+// CONFIGURAÇÃO INICIAL
+// =====================
+
+// FILAS E PREÇOS INICIAIS
 let filas = {
+  "x1-mobile": [],
+  "x2-mobile": [],
+  "x3-mobile": [],
+  "x4-mobile": [],
+  "x1-emulador": [],
+  "x2-emulador": [],
+  "x3-emulador": [],
+  "x4-emulador": [],
   "rmv": []
 };
 
 let precos = {
+  "x1-mobile": 0.30,
+  "x2-mobile": 0.50,
+  "x3-mobile": 0.70,
+  "x4-mobile": 1.00,
+  "x1-emulador": 0.30,
+  "x2-emulador": 0.50,
+  "x3-emulador": 0.70,
+  "x4-emulador": 1.00,
   "rmv": 0.30
 };
 
@@ -53,33 +73,34 @@ client.on("messageCreate", async (message) => {
 
     message.reply("⚙️ Criando estrutura da PLAY BOY E-SPORTS...");
 
-    // CARGOS
+    // ======= CRIAR CARGOS =======
     const cargos = ["DONO","🎖️ CEO","💼 DIRETOR","🛡️ GERENTE GERAL","📋 ADMIN GERAL","🧩 COORDENADOR","🔥 HEAD COMPETITIVO","📊 ANALISTA","📢 INFLUENCER","🎫 SUPORTE","👤 MEMBRO COMPETITIVO","🏆 MVP","🥇 TOP 1 RANK","⭐ DESTAQUE","👤 MEMBRO","🎟️ CLIENTE","👀 VISITANTE"];
     for (let nome of cargos) if (!message.guild.roles.cache.find(r => r.name===nome)) 
       await message.guild.roles.create({ name: nome, reason: "Setup PLAY BOY" });
 
-    // FILA RMV
-    const categoriaRMV = await message.guild.channels.create({ name:"🎮 FILA RMV", type:ChannelType.GuildCategory });
-    const canalRMV = await message.guild.channels.create({ name:"⚔️-rmv", type:ChannelType.GuildText, parent:categoriaRMV.id });
+    // ======= CRIAR FILAS E PAINÉIS =======
+    for (let fila in filas){
+      const categoria = await message.guild.channels.create({ name:`🎮 ${fila.toUpperCase()}`, type:ChannelType.GuildCategory });
+      const canal = await message.guild.channels.create({ name:`⚔️-${fila}`, type:ChannelType.GuildText, parent:categoria.id });
 
-    // Mensagem do painel
-    const painelRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("rmv_entrar").setLabel("Entrar").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("rmv_sair").setLabel("Sair").setStyle(ButtonStyle.Danger)
-    );
-    const painel = await canalRMV.send({ content:`👑 FILA RMV\n💰 PREÇO: ${precos["rmv"]}\n👤 Jogadores: 0/2`, components:[painelRow]});
-    painelMsg["rmv"] = painel.id;
+      const painelRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`${fila}_entrar`).setLabel("Entrar").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`${fila}_sair`).setLabel("Sair").setStyle(ButtonStyle.Danger)
+      );
 
-    // TICKET
+      const painel = await canal.send({ content:`👑 FILA ${fila.toUpperCase()}\n💰 PREÇO: ${precos[fila]}\n👤 Jogadores: 0/2`, components:[painelRow]});
+      painelMsg[fila] = painel.id;
+    }
+
+    // ======= TICKET =======
     const ticketCat = await message.guild.channels.create({ name:"🎫 SUPORTE", type:ChannelType.GuildCategory });
-    const suporteRole = message.guild.roles.cache.find(r => r.name==="🎫 SUPORTE");
     const ticketChannel = await message.guild.channels.create({ name:"🎫-tickets", type:ChannelType.GuildText, parent:ticketCat.id });
     const ticketRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("abrir-ticket").setLabel("🎫 Abrir Ticket").setStyle(ButtonStyle.Primary)
     );
     ticketChannel.send({ content:"Clique no botão para abrir um ticket de suporte:", components:[ticketRow] });
 
-    // ANÁLISES (5 canais de partidas + 5 de jogadores)
+    // ======= ANÁLISES =======
     const analise = await message.guild.channels.create({ name:"📊 ANÁLISE", type:ChannelType.GuildCategory });
     for(let i=1;i<=5;i++){
       await message.guild.channels.create({ name:`📊-partidas-${i}`, type:ChannelType.GuildVoice, parent:analise.id });
@@ -89,7 +110,7 @@ client.on("messageCreate", async (message) => {
     message.channel.send("✅ PLAY BOY E-SPORTS criada com sucesso 👑🔥");
   }
 
-  // EXCLUIR TODOS OS CANAIS
+  // ======= RESETAR SERVIDOR =======
   if(message.content==="!reset"){
     if(!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) 
       return message.reply("❌ Apenas ADM pode resetar o servidor.");
@@ -99,7 +120,7 @@ client.on("messageCreate", async (message) => {
     });
   }
 
-  // ALTERAR PREÇO
+  // ======= ALTERAR PREÇO =======
   if(message.content.startsWith("!preco")){
     const args = message.content.split(" ");
     const canal = args[1];
@@ -110,10 +131,10 @@ client.on("messageCreate", async (message) => {
     message.reply(`✅ Preço da fila ${canal} atualizado para ${novoPreco}`);
   }
 
-  // CRIAR SALA (renomeia canal com preço + valor base *2 + taxa 0,05)
+  // ======= CRIAR SALA =======
   if(message.content.startsWith("!criar")){
     const args = message.content.split(" ");
-    const canal = args[1]; // rmv
+    const canal = args[1]; 
     const senha = args[2];
     const valorBase = parseFloat(args[3]);
     if(!precos[canal]) return message.reply("❌ Canal inválido.");
@@ -135,7 +156,7 @@ client.on("interactionCreate", async (interaction)=>{
   const [canal, acao] = interaction.customId.split("_");
   const userId = interaction.user.id;
 
-  // Entrar
+  // ======= ENTRAR NA FILA =======
   if(acao==="entrar"){
     if(!filas[canal].includes(userId)) filas[canal].push(userId);
     else return interaction.reply({content:"⚠️ Você já está nessa fila.", ephemeral:true});
@@ -143,7 +164,7 @@ client.on("interactionCreate", async (interaction)=>{
     atualizarPainel(canal, interaction.guild);
 
     // Checar limite
-    const limite = 2; // Ajuste se quiser para X2, X3, X4
+    const limite = canal.includes("x1") ? 2 : canal.includes("x2") ? 4 : canal.includes("x3") ? 6 : canal.includes("x4") ? 8 : 2;
     if(filas[canal].length>=limite){
       const guild = interaction.guild;
       const permissoes = [{id:guild.id, deny:[PermissionsBitField.Flags.ViewChannel]}];
@@ -164,14 +185,14 @@ client.on("interactionCreate", async (interaction)=>{
     }
   }
 
-  // Sair
+  // ======= SAIR DA FILA =======
   if(acao==="sair"){
     filas[canal] = filas[canal].filter(id=>id!==userId);
     await interaction.reply({content:`✅ Você saiu da fila ${canal.toUpperCase()}`, ephemeral:true});
     atualizarPainel(canal, interaction.guild);
   }
 
-  // Fechar canal
+  // ======= FECHAR CANAL =======
   if(interaction.customId==="fechar-canal"){
     const memberRoles = interaction.member.roles.cache.map(r=>r.name.toUpperCase());
     const staffRoles = ["DONO","DIRETOR","GERENTE GERAL","ADMIN GERAL"];
@@ -179,7 +200,7 @@ client.on("interactionCreate", async (interaction)=>{
     await interaction.channel.delete().catch(()=>{});
   }
 
-  // Ticket
+  // ======= ABRIR TICKET =======
   if(interaction.customId==="abrir-ticket"){
     const ticketCat = interaction.guild.channels.cache.find(c=>c.name==="🎫 SUPORTE" && c.type===4);
     const ticketChannel = await interaction.guild.channels.create({ name:`🎫-ticket-${interaction.user.username}`, type:0, parent:ticketCat.id, permissionOverwrites:[
@@ -207,7 +228,7 @@ async function atualizarPainel(canal, guild){
       new ButtonBuilder().setCustomId(`${canal}_entrar`).setLabel("Entrar").setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId(`${canal}_sair`).setLabel("Sair").setStyle(ButtonStyle.Danger)
     );
-    await msg.edit({ content:`👑 FILA ${canal.toUpperCase()}\n💰 PREÇO: ${precos[canal]}\n👤 Jogadores: ${filas[canal].length}/2`, components:[row] });
+    await msg.edit({ content:`👑 FILA ${canal.toUpperCase()}\n💰 PREÇO: ${precos[canal]}\n👤 Jogadores: ${filas[canal].length}/${canal.includes("x1") ? 2 : canal.includes("x2") ? 4 : canal.includes("x3") ? 6 : canal.includes("x4") ? 8 : 2}`, components:[row] });
   }catch(e){}
 }
 

@@ -39,14 +39,12 @@ let filas = {
   "x4-emulador": []
 };
 
-// Todos os preços que você mencionou
 let precos = [0.30,0.50,0.70,1,2,3,5,10,20,30,50,70,100];
 
 let canaisPrivados = {};
 let painelMsg = {};
 let senhas = {}; // Senhas das salas
 
-// Cargos com acesso restrito
 const cargosRestritos = ["DONO","ADMIN GERAL","GERENTE","SUPORTE","STAFF"];
 
 client.once("ready", () => console.log("👑 PLAY BOY E-SPORTS ONLINE"));
@@ -76,17 +74,12 @@ client.on("messageCreate", async message => {
     };
 
     for(const [catName, modos] of Object.entries(categorias)){
-      // Criar categoria
       let cat;
       try{
         cat = await message.guild.channels.create({name:`🎮 ${catName}`, type:ChannelType.GuildCategory});
-      }catch(e){
-        console.log(`❌ Erro ao criar categoria ${catName}:`, e);
-        continue;
-      }
+      }catch(e){ continue; }
 
       for(let modo of modos){
-        // Criar canal de texto para fila
         let canal;
         try{
           canal = await message.guild.channels.create({
@@ -94,17 +87,14 @@ client.on("messageCreate", async message => {
             type:ChannelType.GuildText, 
             parent:cat.id,
             permissionOverwrites:[
-              {id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]}, // Todos negado
+              {id:message.guild.id, deny:[PermissionsBitField.Flags.ViewChannel]},
               ...message.guild.roles.cache.filter(r => cargosRestritos.includes(r.name.toUpperCase()))
                 .map(r => ({id:r.id, allow:[PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]}))
             ]
           });
-        }catch(e){
-          console.log(`❌ Erro ao criar canal ${modo}:`, e);
-          continue;
-        }
+        }catch(e){ continue; }
         
-        // Painel com botões de preço
+        // ======= BOTÕES DE PREÇOS =======
         const row = new ActionRowBuilder();
         precos.forEach(valor=>{
           row.addComponents(
@@ -115,13 +105,13 @@ client.on("messageCreate", async message => {
           );
         });
 
-        // Enviar mensagem com botões
         try{
-          let painel = await canal.send({content:`👑 FILA ${modo.toUpperCase()}\nEscolha seu preço:`, components:[row]});
+          let painel = await canal.send({
+            content:`👑 FILA ${modo.toUpperCase()}\nEscolha seu preço:`,
+            components:[row]
+          });
           painelMsg[modo] = painel.id;
-        }catch(e){
-          console.log(`❌ Falha ao enviar painel na fila ${modo}:`, e);
-        }
+        }catch(e){ console.log(`❌ Falha painel ${modo}:`, e); }
       }
     }
 
@@ -167,7 +157,6 @@ client.on("interactionCreate", async interaction=>{
     if(!filas[modo]) filas[modo]=[];
     if(!filas[modo].includes(userId)) filas[modo].push(userId);
 
-    // Canal privado automático
     const limite = modo.includes("x1") ? 2 : modo.includes("x2") ? 4 : modo.includes("x3") ? 6 : modo.includes("x4") ? 8 : 2;
     if(filas[modo].length >= limite){
       const guild = interaction.guild;
@@ -185,15 +174,14 @@ client.on("interactionCreate", async interaction=>{
         permissionOverwrites:permissoes
       });
       canaisPrivados[modo] = canalPriv.id;
-      senhas[modo] = Math.floor(Math.random()*9000+1000); // senha aleatória 1000-9999
+      senhas[modo] = Math.floor(Math.random()*9000+1000);
 
       const embed = new EmbedBuilder()
         .setTitle("⚔️ PARTIDA INICIADA")
         .setDescription(
           `Jogadores:\n${filas[modo].map(id=>`<@${id}>`).join("\n")}\n\n`+
           `💰 Valor da partida: R$${valorTotal}\n`+
-          `🔒 Senha da sala: ${senhas[modo]}\n\n`+
-          `Clique no botão abaixo para aceitar a aposta.`
+          `🔒 Senha da sala: ${senhas[modo]}\n\nClique no botão abaixo para aceitar a aposta.`
         )
         .setColor("#FFD700");
 
@@ -220,7 +208,6 @@ client.on("interactionCreate", async interaction=>{
   if(interaction.customId==="aceitar-aposta"){
     const admRoles = cargosRestritos;
     const adms = interaction.guild.members.cache.filter(m=>m.roles.cache.some(r=>admRoles.includes(r.name.toUpperCase())));
-
     const canalPriv = interaction.channel;
     const canalName = canalPriv.name.split("-")[1];
     const valor = canalPriv.name.split("R$")[1] || "N/A";

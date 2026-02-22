@@ -112,12 +112,26 @@ client.on("messageCreate", async message => {
         });
         if (tempRow.components.length > 0) rows.push(tempRow);
 
-        // Envia painel
+        // Envia painel de preços
         let painel = await canal.send({
           content: `👑 FILA ${modo.toUpperCase()}\nEscolha seu preço:`,
           components: rows
         });
         painelMsg[modo] = painel.id;
+
+        // ======= BOTÕES DE AÇÃO: Full UMP, XM8, Normal, Sair =======
+        const actionRow = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder().setCustomId(`${modo}_fullump`).setLabel("Full UMP").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId(`${modo}_xm8`).setLabel("XM8").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId(`${modo}_normal`).setLabel("Normal").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId(`${modo}_sair`).setLabel("Sair da Fila").setStyle(ButtonStyle.Danger)
+          );
+
+        await canal.send({
+          content: `🎯 Ações da fila ${modo.toUpperCase()}:`,
+          components: [actionRow]
+        });
       }
     }
 
@@ -156,7 +170,7 @@ client.on("interactionCreate", async interaction=>{
   if(!interaction.isButton()) return;
   const userId = interaction.user.id;
 
-  // BOTÕES DE PREÇO
+  // ===================== BOTÕES DE PREÇO =====================
   if(interaction.customId.includes("_preco_")){
     const [modo,, valorStr] = interaction.customId.split("_");
     const valor = parseFloat(valorStr);
@@ -203,14 +217,39 @@ client.on("interactionCreate", async interaction=>{
     await interaction.reply({content:`✅ Você escolheu R$${valor} na fila ${modo.toUpperCase()}`, ephemeral:true});
   }
 
-  // FECHAR CANAL
+  // ===================== BOTÕES DE AÇÃO =====================
+  const modosKeys = Object.keys(filas);
+  modosKeys.forEach(modo=>{
+    if(interaction.customId === `${modo}_fullump`){
+      filas[modo] = filas[modo] || [];
+      if(!filas[modo].includes(userId)) filas[modo].push(userId);
+      return interaction.reply({content:"✅ Você escolheu Full UMP!", ephemeral:true});
+    }
+    if(interaction.customId === `${modo}_xm8`){
+      filas[modo] = filas[modo] || [];
+      if(!filas[modo].includes(userId)) filas[modo].push(userId);
+      return interaction.reply({content:"✅ Você escolheu XM8!", ephemeral:true});
+    }
+    if(interaction.customId === `${modo}_normal`){
+      filas[modo] = filas[modo] || [];
+      if(!filas[modo].includes(userId)) filas[modo].push(userId);
+      return interaction.reply({content:"✅ Você escolheu Normal!", ephemeral:true});
+    }
+    if(interaction.customId === `${modo}_sair`){
+      filas[modo] = filas[modo] || [];
+      filas[modo] = filas[modo].filter(id => id !== userId);
+      return interaction.reply({content:"❌ Você saiu da fila!", ephemeral:true});
+    }
+  });
+
+  // ===================== FECHAR CANAL =====================
   if(interaction.customId==="fechar-canal"){
     const memberRoles = interaction.member.roles.cache.map(r=>r.name.toUpperCase());
     if(!memberRoles.some(r=>cargosRestritos.includes(r))) return interaction.reply({content:"❌ Apenas ADM pode fechar.", ephemeral:true});
     await interaction.channel.delete().catch(()=>{});
   }
 
-  // ACEITAR APOSTA
+  // ===================== ACEITAR APOSTA =====================
   if(interaction.customId==="aceitar-aposta"){
     const admRoles = cargosRestritos;
     const adms = interaction.guild.members.cache.filter(m=>m.roles.cache.some(r=>admRoles.includes(r.name.toUpperCase())));
@@ -234,7 +273,7 @@ client.on("interactionCreate", async interaction=>{
     interaction.reply({content:"✅ Você aceitou a aposta! ADM notificado.", ephemeral:true});
   }
 
-  // ABRIR TICKET
+  // ===================== TICKETS =====================
   if(interaction.customId==="abrir-ticket"){
     const ticketCat = interaction.guild.channels.cache.find(c=>c.name==="🎫 SUPORTE" && c.type===4);
     const ticketChannel = await interaction.guild.channels.create({
